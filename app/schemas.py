@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr
-from datetime import datetime
+from pydantic import BaseModel, EmailStr, ConfigDict
+from typing import List
+from datetime import datetime, date
 
 
 class Token(BaseModel):
@@ -25,11 +26,9 @@ class UserCreate(UserLogin):
 
 
 class UserOut(UserBase):
+    model_config = ConfigDict(from_attributes=True)
     id: int  # could remove this
     created_at: datetime
-
-    class Config:
-        from_atrributes: True
 
 
 # Post schemas
@@ -40,13 +39,17 @@ class PostBase(BaseModel):
 
 
 class Post(PostBase):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     created_at: datetime
     owner_id: int
     owner: UserOut
 
-    class Config:
-        from_attributes = True
+
+class PostOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    Post: Post
+    votes: int
 
 
 # Data schemas
