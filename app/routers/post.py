@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import Response, status, HTTPException, Depends, APIRouter
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas, oauth2
@@ -8,32 +8,41 @@ from .. import models, schemas, oauth2
 router = APIRouter(prefix="/posts", tags=["Posts"])
 
 
-@router.get("/", response_model=List[schemas.Post])
+@router.get("/", response_model=List[schemas.PostOut])
 def get_posts(
     db: Session = Depends(get_db),
-    current_user: int = Depends(oauth2.get_current_user),
+    current_user: schemas.UserOut = Depends(oauth2.get_current_user),
     search: str | None = None,
-    id: int | None = None,
+    owner_id: int | None = None,
     limit: int = 10,
     offset: int = 0,
 ):
-    print(id)
-    post_query = db.query(models.Post)
+    post_query = (
+        db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
+        .join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True)
+        .group_by(models.Post.id)
+    )
 
     if search:
         post_query = post_query.filter(models.Post.title.contains(search))
 
-    if not id:
+    if not owner_id:
         post_query = post_query.filter(
             or_(models.Post.owner_id == current_user.id, models.Post.private == False)
         )
     else:
-        if id == current_user.id:
-            post_query = post_query.filter(models.Post.owner_id == id)
-        post_query = post_query.filter(models.Post.private == False)
+        if owner_id != current_user.id:
+            post_query = post_query.filter(models.Post.private == False)
+        post_query = post_query.filter(models.Post.owner_id == owner_id)
 
     post_query = post_query.limit(limit).offset(offset)
     posts = post_query.all()
+
+    if not posts:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"no posts with the given criteria found",
+        )
 
     return posts
 
@@ -42,21 +51,94 @@ def get_posts(
 def create_post(
     post: schemas.PostBase,
     db: Session = Depends(get_db),
-    current_user: int = Depends(oauth2.get_current_user),
+    current_user: schemas.UserOut = Depends(oauth2.get_current_user),
 ):
-    return {"data": "This will create a post"}
+    new_post = models.Post(owner_id=current_user.id, **post.model_dump())
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+
+    return new_post
 
 
-@router.get("/{id}")
-def get_post(id: int):
-    return {"data": f"This will return the post with id: {id}"}
+@router.get("/{id}", response_model=schemas.PostOut)
+def get_post(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.UserOut = Depends(oauth2.get_current_user),
+):
+    post = (
+        db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
+        .join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True)
+        .group_by(models.Post.id)
+        .filter(models.Post.id == id)
+        .first()
+    )
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"post with id: {id} was not found",
+        )
+
+    if post.Post.private == True and post.Post.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"this post is private"
+        )
+
+    return post
 
 
-@router.delete("/{id}")
-def delete_post():
-    pass
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.UserOut = Depends(oauth2.get_current_user),
+):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = post_query.first()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"A post with id: {id} does not exist.",
+        )
+
+    if post.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Not authorised to perform the requested action.",
+        )
+
+    post_query.delete(synchronize_session=False)
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.put("/{id}")
-def update_post():
-    pass
+@router.put("/{id}", response_model=schemas.Post)
+def update_post(
+    id: int,
+    updated_post: schemas.PostBase,
+    db: Session = Depends(get_db),
+    current_user: schemas.UserOut = Depends(oauth2.get_current_user),
+):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = post_query.first()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"A post with id: {id} does not exist.",
+        )
+
+    if post.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Not authorised to perform the request action.",
+        )
+
+    post_query.update(updated_post.model_dump(), synchronize_session=False)
+    db.commit()
+
+    return post_query.first()
