@@ -54,9 +54,12 @@ class PostOut(BaseModel):
 
 # Data schemas
 # This base data schema covers weight/calories/steps
-class DataEntry(BaseModel):
-    date: datetime
-    datapoint: float
+class DataBase(BaseModel):
+    datapoint: int | float
+
+
+class DataEntry(DataBase):
+    date: date
 
 
 class DataOut(DataEntry):
@@ -75,8 +78,8 @@ class ExerciseEntry(DataEntry):
 class ExerciseOut(ExerciseEntry):
     # id: int
     created_at: datetime
-    owner_id: int
-    owner: UserOut
+    # owner_id: int
+    # owner: UserOut
 
     # class Config:
     #     from_attributes = True
