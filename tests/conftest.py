@@ -85,6 +85,8 @@ def authorized_client(client, token):
 
 @pytest.fixture
 def test_posts(test_user, test_user2, session):
+    # post list contains 12 posts each by test_user 1 and 2,
+    # 6 public and 6 private
     posts_data = posts_data = [
         {"title": "1st - u1 pub", "private": False, "owner_id": test_user["id"]},
         {"title": "2nd - u1 pub", "private": False, "owner_id": test_user["id"]},
