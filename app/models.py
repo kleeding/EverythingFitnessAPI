@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -38,8 +38,8 @@ class Weight(Base):
     __tablename__ = "weights"
 
     id = Column(Integer, primary_key=True, nullable=False)
-    weight = Column(Float, nullable=False)
-    date = Column(TIMESTAMP(timezone=True), nullable=False)
+    datapoint = Column(Integer, nullable=False)
+    date = Column(Date, nullable=False)
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -50,12 +50,12 @@ class Weight(Base):
     owner = relationship("User")
 
 
-class Calories(Base):
+class Calorie(Base):
     __tablename__ = "calories"
 
     id = Column(Integer, primary_key=True, nullable=False)
-    calories = Column(Integer, nullable=False)
-    date = Column(TIMESTAMP(timezone=True), nullable=False)
+    datapoint = Column(Float, nullable=False)
+    date = Column(Date, nullable=False)
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -66,12 +66,12 @@ class Calories(Base):
     owner = relationship("User")
 
 
-class Steps(Base):
+class Step(Base):
     __tablename__ = "steps"
 
     id = Column(Integer, primary_key=True, nullable=False)
-    steps = Column(Integer, nullable=False)
-    date = Column(TIMESTAMP(timezone=True), nullable=False)
+    datapoint = Column(Float, nullable=False)
+    date = Column(Date, nullable=False)
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -89,7 +89,7 @@ class Exercise(Base):
     name = Column(String, nullable=False)
     weight = Column(Float, nullable=False)
     reps = Column(Integer, nullable=False)
-    date = Column(TIMESTAMP(timezone=True), nullable=False)
+    date = Column(Date, nullable=False)
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )

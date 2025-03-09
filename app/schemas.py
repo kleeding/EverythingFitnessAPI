@@ -57,13 +57,10 @@ class DataEntry(BaseModel):
 
 
 class DataOut(DataEntry):
-    id: int
+    # id: int
     created_at: datetime
-    owner_id: int
-    owner: UserOut
-
-    class Config:
-        from_attributes = True
+    # owner_id: int
+    # owner: UserOut
 
 
 # Exercise schemas - reqs a exercise name and reps
@@ -73,10 +70,27 @@ class ExerciseEntry(DataEntry):
 
 
 class ExerciseOut(ExerciseEntry):
-    id: int
+    # id: int
     created_at: datetime
     owner_id: int
     owner: UserOut
 
-    class Config:
-        from_attributes = True
+    # class Config:
+    #     from_attributes = True
+
+
+class ExerciseBasic(ExerciseEntry):
+    date: date
+    datapoint: int | float
+
+
+class AllData(BaseModel):
+    weight_data: List[DataEntry] = []
+    calories_data: List[DataEntry] = []
+    steps_data: List[DataEntry] = []
+    exercise_data: List[ExerciseBasic] = []
+
+
+class Vote(BaseModel):
+    post_id: int
+    dir: int
